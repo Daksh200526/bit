@@ -1,0 +1,51 @@
+import auth from '@react-native-firebase/auth';
+
+// Sign In Example
+const signIn = (email, password) => {
+  auth().signInWithEmailAndPassword(email, password)
+    .then(() => {
+      console.log('User signed in!');
+    })
+    .catch(error => {
+      console.error(error);
+    });
+};
+
+// Sign Up Example
+const signUp = (email, password) => {
+  auth().createUserWithEmailAndPassword(email, password)
+    .then(() => {
+      console.log('User account created & signed in!');
+    })
+    .catch(error => {
+      console.error(error);
+    });
+};
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+admin.initializeApp();
+
+exports.sendNotificationOnNewItem = functions.firestore
+  .document('items/{itemId}')
+  .onCreate((snap, context) => {
+    const newValue = snap.data();
+
+    const payload = {
+      notification: {
+        title: 'New Item Added',
+        body: `${newValue.name} has been added to your inventory.`,
+      },
+    };
+
+    return admin.messaging().sendToTopic('allUsers', payload);
+  });
+import storage from '@react-native-firebase/storage';
+
+// Upload File
+const uploadImage = async (filePath) => {
+  const reference = storage().ref('items/item-image.jpg');
+  await reference.putFile(filePath);
+  const url = await reference.getDownloadURL();
+  console.log('File available at', url);
+  return url;
+};
