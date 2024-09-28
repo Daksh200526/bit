@@ -1,0 +1,136 @@
+npx react-native init PIMSApp
+cd PIMSApp
+npm install @react-navigation/native @react-navigation/stack
+npm install @react-native-firebase/app @react-native-firebase/auth @react-native-firebase/firestore
+npm install react-native-gesture-handler react-native-reanimated react-native-screens react-native-safe-area-context
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import HomeScreen from './screens/HomeScreen';
+import ItemDetailScreen from './screens/ItemDetailScreen';
+import AddItemScreen from './screens/AddItemScreen';
+import firebase from '@react-native-firebase/app';
+import { firebaseConfig } from './firebaseConfig';
+
+// Initialize Firebase
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+
+const Stack = createStackNavigator();
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Home">
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Item Details" component={ItemDetailScreen} />
+        <Stack.Screen name="Add Item" component={AddItemScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+export const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
+};
+import React, { useState, useEffect } from 'react';
+import { View, Text, Button, FlatList } from 'react-native';
+import firestore from '@react-native-firebase/firestore';
+
+export default function HomeScreen({ navigation }) {
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    const unsubscribe = firestore()
+      .collection('items')
+      .onSnapshot(querySnapshot => {
+        const itemsArray = [];
+        querySnapshot.forEach(documentSnapshot => {
+          itemsArray.push({
+            ...documentSnapshot.data(),
+            key: documentSnapshot.id,
+          });
+        });
+        setItems(itemsArray);
+      });
+
+    return () => unsubscribe();
+  }, []);
+
+  return (
+    <View>
+      <Text>Welcome to PIMS</Text>
+      <Button title="Add Item" onPress={() => navigation.navigate('Add Item')} />
+      <FlatList
+        data={items}
+        renderItem={({ item }) => (
+          <View>
+            <Text>{item.name}</Text>
+            <Button
+              title="View Details"
+              onPress={() => navigation.navigate('Item Details', { item })}
+            />
+          </View>
+        )}
+      />
+    </View>
+  );
+}
+import React, { useState } from 'react';
+import { View, TextInput, Button } from 'react-native';
+import firestore from '@react-native-firebase/firestore';
+
+export default function AddItemScreen({ navigation }) {
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('');
+
+  const addItem = () => {
+    firestore()
+      .collection('items')
+      .add({
+        name: name,
+        category: category,
+        createdAt: firestore.FieldValue.serverTimestamp(),
+      })
+      .then(() => {
+        console.log('Item added!');
+        navigation.goBack();
+      });
+  };
+
+  return (
+    <View>
+      <TextInput
+        placeholder="Item Name"
+        value={name}
+        onChangeText={text => setName(text)}
+      />
+      <TextInput
+        placeholder="Category"
+        value={category}
+        onChangeText={text => setCategory(text)}
+      />
+      <Button title="Add Item" onPress={addItem} />
+    </View>
+  );
+}
+import React from 'react';
+import { View, Text } from 'react-native';
+
+export default function ItemDetailScreen({ route }) {
+  const { item } = route.params;
+
+  return (
+    <View>
+      <Text>Item Name: {item.name}</Text>
+      <Text>Category: {item.category}</Text>
+      <Text>Added on: {item.createdAt?.toDate().toString()}</Text>
+    </View>
+  );
+}
